@@ -1,6 +1,7 @@
 # Rust
 /target
-Cargo.lock
+/vendor/gpui-ce/target/
+/Cargo.lock
 
 # JetBrains
 .idea

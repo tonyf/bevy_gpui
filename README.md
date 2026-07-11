@@ -1,160 +1,192 @@
-[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner2-direct.svg)](https://stand-with-ukraine.pp.ua)
+# `bevy_gpui`
 
-**Hey!** I'm the author of the crate, and I was born in Mariupol, Ukraine. When russians started the war in 2014, I moved to Kyiv. My parents, who had been staying in Mariupol till the start of the full-scale invasion, barely escaped the city alive. By the moment of writing (June 24th, 2026), we had [2225 air raid alerts in Kyiv, and russians managed to bomb the city 873 times](https://air-alarms.in.ua/en/region/kyiv?only-region-center#statistic).
+Retained [GPUI Community Edition](https://github.com/gpui-ce/gpui-ce) views
+inside ordinary [Bevy 0.19](https://bevyengine.org/) applications.
 
-**If you are using this crate, please consider donating to any of the listed funds (see the banner above), that will mean a lot to me.**
+Bevy keeps ownership of the runner, event loop, native windows, cameras,
+renderer, GPU, command submission, and presentation. GPUI handles retained
+layout, painting, focus, and interaction, then records into Bevy camera targets.
 
-You can also support me directly via [Patreon](https://patreon.com/vladbat00?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink).
+![GPUI panel over a live Bevy 3D scene](screenshots/overlay_3d.png)
 
-# `bevy_egui`
+## Status
 
-[![Crates.io](https://img.shields.io/crates/v/bevy_egui.svg)](https://crates.io/crates/bevy_egui)
-[![Documentation](https://docs.rs/bevy_egui/badge.svg)](https://docs.rs/bevy_egui)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bevyengine/bevy/blob/master/LICENSE)
-[![Downloads](https://img.shields.io/crates/d/bevy_egui.svg)](https://crates.io/crates/bevy_egui)
-[![CI](https://github.com/vladbat00/bevy_egui/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/vladbat00/bevy_egui/actions)
+The core integration is implemented and exercised by native examples. The crate
+is currently version 0.1.0 and is not published to crates.io. macOS has native
+runtime and interaction evidence. Linux and Windows have configured compile and
+test CI whose first green integration run is still pending, not native visual
+parity. Accessibility, touch/mobile, native dialogs, menus, and credential
+storage remain unsupported.
 
-This crate provides an [Egui](https://github.com/emilk/egui) integration for the [Bevy](https://github.com/bevyengine/bevy) game engine.
+Read [Compatibility and limitations](docs/compatibility.md) before adopting the
+crate in a production application.
 
-**Trying out:**
+## Install
 
-A basic WASM example is live at [vladbat00.github.io/bevy_egui/ui](https://vladbat00.github.io/bevy_egui/ui/).
-
-**Features:**
-- Desktop and web platforms support
-- Clipboard
-- Opening URLs
-- Multiple windows support and split-screen support (see [./examples/two_windows.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/two_windows.rs) and [./examples/split_screen.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/split_screen.rs))
-- Paint callback support (see [./examples/paint_callback.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/paint_callback.rs))
-- Mobile web virtual keyboard (still rough around the edges and only works without `prevent_default_event_handling` set to `false` in the `WindowPlugin` settings)
-- Accesskit support
-
-![bevy_egui](bevy_egui.png)
-
-## Dependencies
-
-On Linux, this crate requires certain parts of [XCB](https://xcb.freedesktop.org/) to be installed on your system. On Debian-based systems, these can be installed with the following command:
-
-```bash
-sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
-```
-
-## Usage
-
-Here's a minimal usage example:
 ```toml
-# Cargo.toml
 [dependencies]
-bevy = "0.19.0"
-bevy_egui = "0.41.0"
+bevy = "0.19"
+bevy_gpui = { path = "../bevy_gpui" }
 ```
+
+The integration is not yet present on a committed remote branch or package
+release. Point `path` at this checkout. After a commit or tag containing the
+0.1.0 integration is published, replace the path with an exact Git `rev`.
+
+The default features enable rendering, Bevy picking integration, font-kit,
+Wayland, X11, and the Windows manifest support used by GPUI. See the
+[feature reference](docs/reference.md#cargo-features) for custom builds.
+
+## First overlay
 
 ```rust
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+use bevy_gpui::{
+    GpuiContexts, GpuiPlugin,
+    gpui::{Context, IntoElement, Render, Window, div, prelude::*, rgb, rgba},
+};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugins(EguiPlugin::default())
-        .add_systems(Startup, setup_camera_system)
-        .add_systems(EguiPrimaryContextPass, ui_example_system)
+        .add_plugins((DefaultPlugins, GpuiPlugin::default()))
+        .add_systems(Startup, setup)
         .run();
 }
 
-fn setup_camera_system(mut commands: Commands) {
-    commands.spawn(Camera2d);
+fn setup(mut commands: Commands, mut gpui: GpuiContexts) {
+    let camera = commands.spawn(Camera2d).id();
+    gpui.set_root(camera, |_, cx| cx.new(|_| WelcomePanel { clicks: 0 }))
+        .expect("GPUI root should be queued");
 }
 
-fn ui_example_system(mut contexts: EguiContexts) -> Result {
-    egui::Window::new("Hello").show(contexts.ctx_mut()?, |ui| {
-        ui.label("world");
-    });
-    Ok(())
+struct WelcomePanel {
+    clicks: u32,
+}
+
+impl Render for WelcomePanel {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div().size_full().p_8().child(
+            div()
+                .w_96()
+                .p_5()
+                .rounded_lg()
+                .bg(rgba(0x18_18_1b_e8))
+                .text_color(rgb(0xf4_f4_f5))
+                .child(div().text_xl().child("Hello from GPUI"))
+                .child(format!("Button clicks: {}", self.clicks))
+                .child(
+                    div()
+                        .id("increment")
+                        .mt_3()
+                        .px_4()
+                        .py_2()
+                        .rounded_md()
+                        .bg(rgb(0x25_63_eb))
+                        .cursor_pointer()
+                        .child("Increment")
+                        .on_click(cx.listener(|view, _, _, cx| {
+                            view.clicks += 1;
+                            cx.notify();
+                        })),
+                ),
+        )
+    }
 }
 ```
 
-Note that this example uses Egui in the [multi-pass mode]((https://docs.rs/egui/0.31.1/egui/#multi-pass-immediate-mode)).
-If you don't want to be limited to the `EguiContextPass` schedule, you can use the single-pass mode,
-but it may get deprecated in the future.
+In an application project, save that source as `src/main.rs` and run:
 
-For more advanced examples, see the [examples](#Examples) section below.
+```bash
+cargo run
+```
+
+From this repository checkout, run the checked example directly:
+
+```bash
+cargo run --example getting_started
+```
+
+The [getting-started tutorial](docs/getting-started.md) explains each boundary
+and shows how to keep a typed root handle for later synchronization.
+
+## What it supports
+
+- 2D and 3D camera overlays, viewports, and render ordering around Bevy UI.
+- Multiple Bevy windows and camera-bound retained roots.
+- Bevy `Image` render targets and prepared Bevy images painted inside GPUI.
+- SDR and `Rgba16Float` HDR targets.
+- Mouse, wheel, keyboard, modifiers, text, IME, focus, and file drop. Pinch is
+  limited to a single active window/context because Bevy's gesture has no
+  window ID.
+- Deferred GPUI-to-Bevy commands/messages and typed Bevy-to-GPUI updates.
+- Aggregate gameplay input claims, polling run conditions, and an automatic
+  window-wide Bevy picking blocker.
+- Reactive event-loop wakeups, pipelined scene extraction, and render-device
+  recovery.
+- Full-target backdrop/content filters. Filtered cropped viewports log an error
+  and skip that GPUI scene.
+
+## Input correctness
+
+Bevy input messages are broadcast. Gameplay systems with raw message readers
+must run after `GpuiSystems::Input`, always drain their readers, and ignore
+behavior while `GpuiInputState` claims that input. The public run conditions are
+for polling systems without message cursors. The default `picking` feature
+separately blocks lower Bevy picking hits while GPUI owns the pointer.
+
+Follow [How to route input and Bevy picking](docs/how-to-input-and-picking.md)
+before combining interactive overlays with scene controls.
 
 ## Examples
 
-To run an example, use the following command (you may replace `ui` with a name of another example):
-
 ```bash
-cargo run --example ui
+cargo run --example getting_started
+cargo run --example overlay_3d
+cargo run --example text_input
+cargo run --example multi_window
+cargo run --example render_to_texture
+cargo run --example lifecycle
+cargo run --example hdr_overlay
 ```
 
-### ui ([live page](https://vladbat00.github.io/bevy_egui/ui), source: [examples/ui.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/ui.rs))
+The [documentation index](docs/README.md#runnable-examples) maps every example
+to the behavior to inspect.
 
-Showcasing some more advanced UI, rendering images, hidpi scaling.
+## Documentation
 
-### absorb_input ([live page](https://vladbat00.github.io/bevy_egui/absorb_input), source: [examples/absorb_input.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/absorb_input.rs))
+- [Getting started](docs/getting-started.md)
+- [How-to guides](docs/README.md#how-to-guides)
+- [Public API reference](docs/reference.md)
+- [Architecture](docs/architecture.md)
+- [Compatibility and limitations](docs/compatibility.md)
+- [Future work](docs/future-work.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Contributing](CONTRIBUTING.md)
+- [Maintainer guide](docs/maintainers.md)
 
-Demonstrating the available options for absorbing input when Egui is using pointer or keyboard.  
+## Learn GPUI
 
-### color_test ([live page](https://vladbat00.github.io/bevy_egui/color_test), source: [examples/color_test.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/color_test.rs))
+`bevy_gpui` embeds GPUI but does not replace GPUI's retained-view concepts.
+Learn `Render`, `Context`, elements, styling, listeners, focus, and async tasks
+from the pinned revision's
+[learning examples](https://github.com/gpui-ce/gpui-ce/tree/20340e14874a3b55122e5cb2aa0d023874e08b2d/crates/gpui/examples/learn).
+Import those APIs through `bevy_gpui::gpui` so your application uses the same
+revision as the bridge.
 
-Rendering test from [egui.rs](https://egui.rs). We don't fully pass it, help is wanted ([#291](https://github.com/vladbat00/bevy_egui/issues/291)).
+The original [integration specification](docs/integration-spec.md) records the
+research, ownership decision, implementation phases, and acceptance matrix.
 
-### side_panel ([live page](https://vladbat00.github.io/bevy_egui/side_panel), source: [examples/side_panel.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/side_panel.rs))
+## Vendored GPUI revision
 
-Showing how to display an Egui side panel and transform a camera with a perspective projection to make rendering centered relative to the remaining screen area.
+The repository vendors one exact upstream GPUI revision because the integration
+needs host-neutral APIs that upstream did not expose at that point. The patch
+surface and provenance are recorded in
+[`vendor/gpui-ce/BEVY_GPUI_PATCH.md`](vendor/gpui-ce/BEVY_GPUI_PATCH.md).
 
-### split_screen ([live page](https://vladbat00.github.io/bevy_egui/split_screen), source: [examples/split_screen.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/split_screen.rs))
+Use `bevy_gpui::gpui` for GPUI imports so application code uses the same types
+as the integration.
 
-Demonstrating how to render multiple Egui contexts, attaching them to several cameras that target the same window.
+## License
 
-### render_egui_to_image ([live page](https://vladbat00.github.io/bevy_egui/render_egui_to_image), source: [examples/render_egui_to_image.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/render_egui_to_image.rs))
-
-Rendering UI to an image (texture) and then using it as a mesh material texture.
-
-### render_to_image_widget ([live page](https://vladbat00.github.io/bevy_egui/render_to_image_widget), source: [examples/render_to_image_widget.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/render_to_image_widget.rs))
-
-Rendering to a texture with Bevy and showing it as an Egui image widget.
-
-### two_windows (source: [examples/two_windows.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/two_windows.rs))
-
-Setting up two windows with an Egui context for each.
-
-### paint_callback ([live page](https://vladbat00.github.io/bevy_egui/paint_callback), source: [examples/paint_callback.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/paint_callback.rs))
-
-Using Egui paint callbacks.
-
-### simple ([live page](https://vladbat00.github.io/bevy_egui/simple), source: [examples/simple.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/simple.rs))
-
-The minimal usage example from this readme.
-
-### run_manually ([live page](https://vladbat00.github.io/bevy_egui/run_manually), source: [examples/run_manually.rs](https://github.com/vladbat00/bevy_egui/blob/v0.41.0/examples/run_manually.rs))
-
-The same minimal example demonstrating running Egui passes manually.
-
-## See also
-
-- [`jakobhellermann/bevy-inspector-egui`](https://github.com/jakobhellermann/bevy-inspector-egui)
-
-## Bevy support table
-
-**Note:** if you're looking for a `bevy_egui` version that supports `main` branch of Bevy, check out [open PRs](https://github.com/vladbat00/bevy_egui/pulls), there's a great chance we've already started working on the future Bevy release support.
-
-| bevy | bevy_egui |
-|------|-----------|
-| 0.19 | 0.40-0.41 |
-| 0.18 | 0.39      |
-| 0.17 | 0.37-0.38 |
-| 0.16 | 0.34-0.36 |
-| 0.15 | 0.31-0.33 |
-| 0.14 | 0.28-0.30 |
-| 0.13 | 0.25-0.27 |
-| 0.12 | 0.23-0.24 |
-| 0.11 | 0.21-0.22 |
-| 0.10 | 0.20      |
-| 0.9  | 0.17-0.19 |
-| 0.8  | 0.15-0.16 |
-| 0.7  | 0.13-0.14 |
-| 0.6  | 0.10-0.12 |
-| 0.5  | 0.4-0.9   |
-| 0.4  | 0.1-0.3   |
+`bevy_gpui` is available under the [MIT License](LICENSE). Vendored GPUI source
+retains its upstream license and provenance.

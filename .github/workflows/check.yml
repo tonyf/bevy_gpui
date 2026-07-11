@@ -1,163 +1,72 @@
+name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-name: CI
-
 jobs:
   fmt:
-    name: Formatter check
+    name: Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  clippy:
-    name: Clippy check
+  check:
+    name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14, windows-latest]
-        features: [
-            "",
-            "immutable_ctx",
-            "manage_clipboard",
-            "open_url",
-            "render",
-            "manage_clipboard,open_url,render",
-          ]
     steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Install dependencies
+      - name: Install Linux dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libglib2.0-dev libgtk-3-dev
-      - run: cargo clippy --no-default-features --all-targets --features=${{ matrix.features }} -- -D warnings
+        run: >-
+          sudo apt-get update && sudo apt-get install --no-install-recommends
+          libfontconfig-dev libwayland-dev libx11-xcb-dev libxcb1-dev
+          libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+          libxkbcommon-dev libxkbcommon-x11-dev
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo check --lib --no-default-features
+      - run: cargo test --lib
+      - run: cargo test --examples
+      - run: ruby scripts/check-wgpu-identity.rb
+      - run: >-
+          cargo test --manifest-path vendor/gpui-ce/Cargo.toml -p gpui
+          embedded_application_has_explicit_update_and_reentrancy_boundaries --lib
+      - run: >-
+          cargo test --manifest-path vendor/gpui-ce/Cargo.toml -p gpui
+          scene_snapshot_is_sendable_and_preserves_batch_order --lib
+      - run: >-
+          cargo test --manifest-path vendor/gpui-ce/Cargo.toml -p gpui_wgpu
+          external_renderer_records_without_creating_or_presenting_a_surface --lib
 
-  clippy_wasm32:
-    name: Clippy check (wasm32)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        features:
-          [
-            "",
-            "immutable_ctx",
-            "manage_clipboard",
-            "open_url",
-            "render",
-            "manage_clipboard,open_url,render,picking,bevy/bevy_gizmos",
-          ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: clippy
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --no-default-features --target=wasm32-unknown-unknown --all-targets --features=${{ matrix.features }} -- -D warnings
-        env:
-          RUSTFLAGS: --cfg getrandom_backend="wasm_js"
-
-  clippy_android:
-    name: Clippy check (android)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        features:
-          [
-            "",
-            "immutable_ctx",
-            "manage_clipboard",
-            "open_url",
-            "render",
-            "manage_clipboard,open_url,render,picking,bevy/bevy_gizmos",
-          ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: clippy
-          targets: aarch64-linux-android
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          AR=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
-          CC=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang \
-          CXX=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang++ \
-          cargo clippy --target=aarch64-linux-android --no-default-features --all-targets --features=${{ matrix.features }} -- -D warnings
-
-  clippy_ios:
-    name: Clippy check (ios)
-    runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        features:
-          [
-            "",
-            "immutable_ctx",
-            "manage_clipboard",
-            "open_url",
-            "render",
-            "manage_clipboard,open_url,render,picking,bevy/bevy_gizmos",
-          ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: clippy
-          targets: aarch64-apple-ios
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --target=aarch64-apple-ios --no-default-features --all-targets --features=${{ matrix.features }} -- -D warnings
-
-  doc:
-    name: Check documentation
+  docs:
+    name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo doc --all --features "bevy_winit/x11"
+      - name: Install Linux dependencies
+        run: >-
+          sudo apt-get update && sudo apt-get install --no-install-recommends
+          libfontconfig-dev libwayland-dev libx11-xcb-dev libxcb1-dev
+          libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+          libxkbcommon-dev libxkbcommon-x11-dev
+      - run: ruby scripts/check-docs.rb
+      - run: cargo test --doc
+      - run: cargo doc --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
-
-  test:
-    name: Run tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          tool-cache: false
-          large-packages: false
-          docker-images: false
-          swap-storage: false
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install dependencies
-        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libglib2.0-dev libgtk-3-dev
-      - run: cargo test --all

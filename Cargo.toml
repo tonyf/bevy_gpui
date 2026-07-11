@@ -1,191 +1,86 @@
 [package]
-name = "bevy_egui"
-version = "0.41.0"
+name = "bevy_gpui"
+version = "0.1.0"
 rust-version = "1.95.0"
-authors = ["vladbat00 <vladyslav.batyrenko@gmail.com>"]
-description = "A plugin for Egui integration into Bevy"
+description = "Retained-mode GPUI overlays for Bevy applications"
+documentation = "https://docs.rs/bevy_gpui"
 license = "MIT"
 edition = "2024"
-repository = "https://github.com/vladbat00/bevy_egui"
-exclude = ["assets/**/*", ".github/**/*"]
+publish = false
+autoexamples = false
+exclude = ["assets/**/*"]
 
 [package.metadata.docs.rs]
-features = ["bevy_winit/x11", "immutable_ctx"]
+features = ["x11"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["manage_clipboard", "open_url", "default_fonts", "render", "bevy_ui", "picking"]
-accesskit = ["bevy_a11y"]
-immutable_ctx = []
-manage_clipboard = ["arboard", "thread_local", "bytemuck", "egui/bytemuck", "smithay-clipboard"]
-open_url = ["webbrowser"]
-default_fonts = ["egui/default_fonts"]
+default = ["render", "picking", "font-kit", "wayland", "x11", "windows-manifest"]
 render = [
-    "bevy_asset",
-    "bevy_core_pipeline",
-    "bevy_image",
-    "bevy_mesh",
-    "bevy_render",
-    "bevy_color",
-    "bevy_shader",
-    "bevy_transform",
-    "encase",
-    "bytemuck",
-    "egui/bytemuck",
-    "wgpu-types",
-    "itertools",
+    "dep:bevy_asset",
+    "dep:bevy_core_pipeline",
+    "dep:bevy_image",
+    "dep:bevy_render",
+    "dep:bevy_ui_render",
 ]
-bevy_ui = [
-    "bevy_ui_render",
-    "render",
-]
-picking = ["render", "bevy_picking"]
-serde = ["egui/serde"]
-# The enabled logs will print with the info log level, to make it less cumbersome to debug in browsers.
-log_input_messages = []
-# The enabled logs will print with the info log level, to make it less cumbersome to debug in browsers.
-log_file_dnd_messages = []
+picking = ["dep:bevy_picking"]
+font-kit = ["gpui/font-kit"]
+wayland = ["gpui/wayland"]
+x11 = ["gpui/x11"]
+windows-manifest = ["gpui/windows-manifest"]
 
 [[example]]
-name = "absorb_input"
-required-features = ["render"]
+name = "getting_started"
+path = "examples/getting_started.rs"
+
 [[example]]
-name = "color_test"
-required-features = ["render"]
+name = "overlay_3d"
+path = "examples/overlay_3d.rs"
+
 [[example]]
-name = "paint_callback"
-required-features = ["render"]
+name = "multi_window"
+path = "examples/multi_window.rs"
+
 [[example]]
-name = "render_to_image_widget"
-required-features = ["render"]
+name = "render_to_texture"
+path = "examples/render_to_texture.rs"
+
 [[example]]
-name = "run_manually"
-required-features = ["render"]
+name = "text_input"
+path = "examples/text_input.rs"
+
 [[example]]
-name = "side_panel"
-required-features = ["render"]
+name = "lifecycle"
+path = "examples/lifecycle.rs"
+
 [[example]]
-name = "simple"
-required-features = ["render"]
-[[example]]
-name = "split_screen"
-required-features = ["render"]
-[[example]]
-name = "two_windows"
-required-features = ["render"]
-[[example]]
-name = "ui"
-required-features = ["render"]
-[[example]]
-name = "render_egui_to_image"
-required-features = ["picking", "render", "bevy/bevy_gizmos", "bevy/bevy_gizmos_render"]
-[[example]]
-name = "file_browse"
-required-features = ["render"]
+name = "hdr_overlay"
+path = "examples/hdr_overlay.rs"
 
 [dependencies]
-egui = { version = "0.35", default-features = false }
-bevy_a11y = { version = "0.19", optional = true }
+anyhow = "1"
+arboard = "3"
 bevy_app = { version = "0.19" }
+bevy_asset = { version = "0.19", optional = true }
 bevy_camera = { version = "0.19" }
-bevy_derive = { version = "0.19" }
+bevy_core_pipeline = { version = "0.19", optional = true }
 bevy_ecs = { version = "0.19" }
 bevy_input = { version = "0.19" }
+bevy_image = { version = "0.19", optional = true }
 bevy_log = { version = "0.19" }
 bevy_math = { version = "0.19" }
-bevy_platform = { version = "0.19" }
-bevy_reflect = { version = "0.19" }
-bevy_time = { version = "0.19" }
+bevy_picking = { version = "0.19", optional = true }
+bevy_render = { version = "0.19", optional = true }
+bevy_tasks = { version = "0.19" }
+bevy_ui_render = { version = "0.19", optional = true }
 bevy_window = { version = "0.19" }
 bevy_winit = { version = "0.19" }
-bevy_utils = { version = "0.19", features = ["debug"] }
-winit = { version = "0.30", default-features = false }
-
-# `open_url` feature
-webbrowser = { version = "1.0.1", optional = true }
-
-# `render` feature
-bytemuck = { version = "1", optional = true }
-
-bevy_asset = { version = "0.19", optional = true }
-bevy_core_pipeline = { version = "0.19", optional = true }
-bevy_image = { version = "0.19", features = ["zstd_rust"], optional = true }
-bevy_mesh = { version = "0.19", optional = true }
-bevy_render = { version = "0.19", optional = true }
-bevy_color = { version = "0.19", optional = true }
-bevy_shader = { version = "0.19", optional = true }
-bevy_transform = { version = "0.19", optional = true }
-encase = { version = "0.12", optional = true }
-itertools = { version = "0.14", optional = true }
-wgpu-types = { version = "29.0.3", optional = true }
-
-# `bevy_ui` feature
-bevy_ui_render = { version = "0.19", optional = true }
-
-# `picking` feature
-bevy_picking = { version = "0.19", optional = true, features = ["mesh_picking"] }
-
-# `manage_clipboard` feature
-[target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
-arboard = { version = "3.2.0", optional = true }
-thread_local = { version = "1.1.0", optional = true }
-[target.'cfg(any(target_os="linux", target_os="dragonfly", target_os="freebsd", target_os="netbsd", target_os="openbsd"))'.dependencies]
-smithay-clipboard = { version = "0.7.2", optional = true }
+gpui = { path = "vendor/gpui-ce/crates/gpui", default-features = false }
+gpui_wgpu = { path = "vendor/gpui-ce/crates/gpui_wgpu" }
+futures = "0.3"
+futures-timer = "3"
+raw-window-handle = "0.6"
+open = "5"
+uuid = "1"
 
 [dev-dependencies]
-version-sync = "0.9.5"
-bevy = { version = "0.19", default-features = false, features = [
-    "bevy_log",
-    "bevy_asset",
-    "bevy_core_pipeline",
-    "bevy_gizmos",
-    "bevy_pbr",
-    "mesh_picking",
-    "bevy_sprite",
-    "bevy_sprite_render",
-    "bevy_text",
-    "bevy_ui_render",
-    "bevy_window",
-    "bevy_winit",
-    "mouse",
-    "keyboard",
-    "touch",
-    "gestures",
-    "android-game-activity",
-    "png",
-    "std",
-    "tonemapping_luts",
-    "webgl2",
-    "x11",
-    "zstd_rust"
-] }
-egui = { version = "0.35", default-features = false, features = ["bytemuck"] }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-bevy = { version = "0.19", default-features = false, features = ["accesskit_unix"] }
-
-[target.'cfg(not(any(target_os = "android", target_os = "ios", target_arch = "wasm32")))'.dev-dependencies]
-rfd = "0.17"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3.74", features = [
-    "Clipboard",
-    "ClipboardEvent",
-    "ClipboardItem",
-    "CompositionEvent",
-    "DataTransfer",
-    "Document",
-    "EventTarget",
-    "HtmlInputElement",
-    "InputEvent",
-    "KeyboardEvent",
-    "Navigator",
-    "TouchEvent",
-    "Window",
-] }
-image = { version = "0.25.5", default-features = false, features = ["png"] } # For copying images
-js-sys = "0.3.63"
-wasm-bindgen = "0.2.93"
-wasm-bindgen-futures = "0.4.36"
-crossbeam-channel = "0.5.8"
-getrandom = { version = "0.4", features = ["wasm_js"] }
+bevy = { version = "0.19" }
