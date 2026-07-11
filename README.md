@@ -11,12 +11,7 @@ layout, painting, focus, and interaction, then records into Bevy camera targets.
 
 ## Status
 
-The core integration is implemented and exercised by native examples. The crate
-is currently version 0.1.0 and is not published to crates.io. macOS has native
-runtime and interaction evidence. Linux and Windows have configured compile and
-test CI whose first green integration run is still pending, not native visual
-parity. Accessibility, touch/mobile, native dialogs, menus, and credential
-storage remain unsupported.
+This package is still in development and experimental. It's been lightly tested & demoed on macos but not yet on Linux / Windows. This was mainly a test to see how far gpt 5.6-sol could go.
 
 Read [Compatibility and limitations](docs/compatibility.md) before adopting the
 crate in a production application.
